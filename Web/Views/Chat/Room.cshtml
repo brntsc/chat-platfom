@@ -1,0 +1,445 @@
+@using Web.Helpers
+@using System.Security.Claims
+@model ChatRoom
+@{
+    ViewData["Title"] = Model.Name;
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+}
+
+<link href="https://emoji-css.afeld.me/emoji.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.3/index.css"/>
+
+<style>
+    .chat-container {
+        height: calc(100vh - 150px);
+        display: flex;
+        flex-direction: column;
+        background: #f8f9fa;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .chat-header {
+        padding: 15px;
+        background: #2c3e50;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .room-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .room-image {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .message {
+        max-width: 70%;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .message.outgoing {
+        margin-left: auto;
+        flex-direction: row-reverse;
+    }
+
+    .message-content {
+        padding: 10px 15px;
+        border-radius: 15px;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        position: relative;
+    }
+
+    .outgoing .message-content {
+        background: #3498db;
+        color: white;
+    }
+
+    .message-image {
+        max-width: 200px;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+
+    .message-emoji {
+        font-size: 2rem;
+    }
+
+    .sender-avatar {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .message-info {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 4px;
+    }
+
+    .outgoing .message-info {
+        text-align: right;
+    }
+
+    .chat-input {
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .input-group {
+        background: white;
+        border-radius: 25px;
+        padding: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .message-input {
+        border: none;
+        outline: none;
+        padding: 10px 15px;
+        border-radius: 20px;
+        width: 100%;
+    }
+
+    .input-buttons {
+        display: flex;
+        gap: 10px;
+        padding: 0 10px;
+    }
+
+    .input-button {
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 5px;
+        transition: color 0.3s;
+    }
+
+    .input-button:hover {
+        color: #2c3e50;
+    }
+
+    .emoji-picker {
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        z-index: 1000;
+        display: none;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .system-message {
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        margin: 10px 0;
+    }
+
+    /* Scrollbar stilleri */
+    .chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    .admin-message {
+        background-color: #dc3545 !important;
+        color: white !important;
+        position: relative;
+    }
+
+    .admin-message::before {
+        content: '👑';
+        position: absolute;
+        top: -15px;
+        left: 5px;
+        font-size: 12px;
+    }
+
+    .outgoing .admin-message::before {
+        right: 5px;
+        left: auto;
+    }
+
+    .message.outgoing .admin-message {
+        background-color: #dc3545 !important;
+        color: white !important;
+    }
+
+    .admin-only-message {
+        text-align: center;
+        padding: 10px;
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+    }
+</style>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="room-info">
+            <img src="@(Model.ImagePath ?? "/images/default-room.png")" alt="@Model.Name" class="room-image">
+            <div>
+                <h5 class="mb-0">@Model.Name</h5>
+                <small>@Model.Users?.Count kullanıcı</small>
+            </div>
+        </div>
+        @if (ViewBag.IsRoomAdmin)
+        {
+            <div class="dropdown">
+                <button class="btn btn-outline-light btn-sm" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="adminOnlyChat" 
+                                       @(ViewBag.AdminOnlyChat ? "checked" : "")
+                                       onchange="toggleAdminOnlyChat(this.checked)">
+                                <label class="form-check-label" for="adminOnlyChat">
+                                    Sadece Yetkililer Yazabilir
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        }
+        <button class="btn btn-outline-light btn-sm" onclick="showRoomInfo()">
+            <i class="fas fa-info-circle"></i>
+        </button>
+    </div>
+
+    <div class="chat-messages" id="messageContainer">
+        @foreach (var message in ViewBag.PreviousMessages)
+        {
+            @Html.Raw(MessageHelper.CreateMessageHtml(message, currentUserId))
+        }
+    </div>
+
+    <div class="chat-input">
+        @if (!ViewBag.AdminOnlyChat || ViewBag.IsRoomAdmin)
+        {
+            <div class="input-group">
+                <input type="text" class="message-input" id="messageInput" placeholder="Mesajınızı yazın...">
+                <div class="input-buttons">
+                    <button class="input-button" onclick="sendMessage()">
+                        <i class="far fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="admin-only-message">
+                Bu kanalda sadece yetkililer mesaj gönderebilir
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const messageContainer = document.getElementById('messageContainer');
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .build();
+
+        // Bağlantıyı başlat
+        connection.start()
+            .then(() => {
+                console.log("SignalR Connected");
+                connection.invoke("JoinRoom", @Model.Id);
+            })
+            .catch(err => console.error(err));
+
+        // Admin-only chat değiştiğinde
+        connection.on("AdminOnlyChatToggled", (enabled) => {
+            if (!@Json.Serialize(ViewBag.IsRoomAdmin)) {
+                const chatInput = document.querySelector('.chat-input');
+                if (enabled) {
+                    chatInput.innerHTML = `
+                        <div class="admin-only-message">
+                            Bu kanalda sadece yetkililer mesaj gönderebilir
+                        </div>`;
+                } else {
+                    chatInput.innerHTML = `
+                        <div class="input-group">
+                            <input type="text" class="message-input" id="messageInput" placeholder="Mesajınızı yazın...">
+                            <div class="input-buttons">
+                                <button class="input-button" onclick="sendMessage()">
+                                    <i class="far fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>`;
+                    
+                    // Input yeniden oluşturulduğu için event listener'ı tekrar ekle
+                    const newMessageInput = document.getElementById('messageInput');
+                    if (newMessageInput) {
+                        newMessageInput.addEventListener('keypress', function(e) {
+                            if (e.key === 'Enter') {
+                                sendMessage();
+                            }
+                        });
+                    }
+                }
+            }
+            toastr.info(enabled ? 'Kanal kilitlendi: Sadece yetkililer mesaj gönderebilir' : 'Kanal kilidi kaldırıldı');
+        });
+
+        // Mesaj gönderme işlemi
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        // Mesaj alma
+        connection.on("ReceiveMessage", function (message) {
+            const messageHtml = createMessageHtml(message);
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.insertAdjacentHTML('beforeend', messageHtml);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        });
+
+        // Sistem mesajı alma
+        connection.on("ReceiveSystemMessage", function (message) {
+            const systemMessageHtml = `<div class="system-message">${message}</div>`;
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.insertAdjacentHTML('beforeend', systemMessageHtml);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        });
+
+        // Sayfa kapatıldığında odadan çık
+        window.onbeforeunload = function() {
+            connection.invoke("LeaveRoom", @Model.Id);
+        };
+
+        // Sayfa yüklendiğinde en alta scroll yap
+        document.addEventListener('DOMContentLoaded', function() {
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        });
+
+        // Mesaj şablonu
+        function createMessageHtml(message) {
+            const isOutgoing = message.sender.id === '@User.FindFirstValue(ClaimTypes.NameIdentifier)';
+            const messageClass = isOutgoing ? 'message outgoing' : 'message';
+            
+            let content = '';
+            switch(message.type) {
+                case 0: // Text
+                    content = `<div class="message-content ${message.isAdmin ? 'admin-message' : ''}">${message.content}</div>`;
+                    break;
+                case 1: // Image
+                    content = `
+                        <div class="message-content">
+                            <img src="${message.imagePath}" class="message-image" onclick="showImage('${message.imagePath}')">
+                        </div>`;
+                    break;
+                case 2: // Emoji
+                    content = `<div class="message-content message-emoji">${message.content}</div>`;
+                    break;
+                case 3: // System
+                    return `<div class="system-message">${message.content}</div>`;
+            }
+
+            return `
+                <div class="${messageClass}">
+                    <img src="${message.sender.profileImage || '/images/default-avatar.png'}" 
+                         class="sender-avatar" alt="${message.sender.userName}">
+                    ${content}
+                    <div class="message-info">
+                        ${message.sender.name} · ${moment(message.sentAt).format('HH:mm')}
+                    </div>
+                </div>`;
+        }
+
+        // Resim gösterme fonksiyonu
+        function showImage(imagePath) {
+            Swal.fire({
+                imageUrl: imagePath,
+                imageAlt: 'Mesaj Resmi',
+                width: 'auto',
+                padding: '1em',
+                showConfirmButton: false,
+                showCloseButton: true
+            });
+        }
+
+        // Mesaj gönderme fonksiyonu
+        function sendMessage() {
+            const currentMessageInput = document.getElementById('messageInput');
+            if (!currentMessageInput) return;
+
+            const content = currentMessageInput.value.trim();
+            if (!content) return;
+
+            connection.invoke("SendMessage", @Model.Id, content)
+                .catch(err => {
+                    console.error(err);
+                    toastr.error(err);
+                });
+
+            currentMessageInput.value = '';
+        }
+
+        function toggleAdminOnlyChat(enabled) {
+            $.post('/Chat/ToggleAdminOnlyChat', { 
+                roomId: @Model.Id, 
+                enabled: enabled 
+            }, function(response) {
+                if (response.success) {
+                    window.location.reload();
+                } else {
+                    toastr.error(response.message);
+                }
+            });
+        }
+    </script>
+} 

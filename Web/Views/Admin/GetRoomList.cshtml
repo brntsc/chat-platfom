@@ -1,0 +1,289 @@
+﻿@{
+    ViewData["Title"] = "Chat Odaları";
+    Layout = "~/Views/Shared/_adminLayout.cshtml";
+}
+
+<style>
+    .custom-switch .custom-control-input:checked ~ .custom-control-label::before {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .custom-switch .custom-control-label::before {
+        height: 1.5rem;
+        width: 2.75rem;
+        border-radius: 2rem;
+    }
+
+    .custom-switch .custom-control-label::after {
+        width: calc(1.5rem - 4px);
+        height: calc(1.5rem - 4px);
+        border-radius: calc(2rem - (1.5rem / 2));
+    }
+
+    .custom-switch .custom-control-input:checked ~ .custom-control-label::after {
+        transform: translateX(1.25rem);
+    }
+
+    .custom-control-input:focus ~ .custom-control-label::before {
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Sohbet Odaları</h3>
+        <div class="card-tools">
+            <a href="/Admin/CreateChatRoom" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> Yeni Oda
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <table id="roomsTable" class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Oda Adı</th>
+                    <th>Açıklama</th>
+                    <th>Oluşturan</th>
+                    <th>Durum</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<!-- Yetkili Atama Modal -->
+<div class="modal fade" id="adminModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Oda Yetkilisi Ata</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Kullanıcılar</label>
+                    <table id="usersTable" class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Kullanıcı</th>
+                                <th>Yetkili</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAdminModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Modal kapatma işlemlerini tanımla
+            $('#adminModal').on('hidden.bs.modal', function () {
+                $('#usersTable tbody').empty();
+            });
+
+            // Modal ayarlarını yap
+            $('#adminModal').modal({
+                keyboard: true,  // ESC ile kapatma aktif
+                backdrop: true,  // Dışına tıklayarak kapatma aktif
+                show: false     // Sayfa yüklendiğinde gösterme
+            });
+
+            var table = $('#roomsTable').DataTable({
+                "ajax": {
+                    "url": "/Admin/GetChatRooms",
+                    "type": "GET",
+                    "datatype": "json"
+                },
+                "columns": [
+                    { "data": "name" },
+                    { "data": "description" },
+                    { 
+                        "data": "createdBy",
+                        "render": function(data) {
+                            return `${data.name} ${data.surname}`;
+                        }
+                    },
+                    {
+                        "data": "isActive",
+                        "render": function(data) {
+                            return data ? 
+                                '<span class="badge badge-success">Aktif</span>' : 
+                                '<span class="badge badge-danger">Pasif</span>';
+                        }
+                    },
+                    {
+                        "data": "id",
+                        "render": function (data, type, row) {
+                            return `
+                                <button class="btn btn-info btn-sm" onclick="showAdminModal(${data})">
+                                    <i class="fas fa-user-shield"></i> Yetkililer
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="editRoom(${data})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteRoom(${data})">
+                                    <i class="fas fa-trash"></i>
+                                </button>`;
+                        }
+                    }
+                ],
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+                }
+            });
+        });
+
+        function closeAdminModal() {
+            $('#adminModal').modal('hide');
+        }
+
+        function showAdminModal(roomId) {
+            console.log("Opening modal for roomId:", roomId); // Debug için
+
+            // Kullanıcıları getir
+            $.get('/Admin/GetRoomUsers', { roomId: roomId }, function(data) {
+                console.log("Room Users Data:", data); // Debug için
+                
+                var tbody = $('#usersTable tbody');
+                tbody.empty();
+                
+                data.forEach(function(user) {
+                    console.log(`User ${user.userName} isRoomAdmin:`, user.isRoomAdmin); // Debug için
+                    
+                    tbody.append(`
+                        <tr>
+                            <td>${user.name} ${user.surname} (${user.userName})</td>
+                            <td>
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" 
+                                           class="custom-control-input" 
+                                           id="admin_${user.id}"
+                                           ${user.isRoomAdmin === true ? 'checked="checked"' : ''}
+                                           onchange="toggleAdmin('${user.id}', ${roomId}, this.checked)">
+                                    <label class="custom-control-label" for="admin_${user.id}">
+                                        ${user.isRoomAdmin ? '' : ''}
+                                    </label>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+                });
+                
+                $('#adminModal').modal('show');
+            }).fail(function(error) {
+                console.error("Error fetching users:", error); // Hata durumunda
+                toastr.error('Kullanıcılar yüklenirken bir hata oluştu!');
+            });
+        }
+
+        function toggleAdmin(userId, roomId, isChecked) {
+            $.ajax({
+                url: '/Admin/ToggleRoomAdmin',
+                type: 'POST',
+                data: {
+                    userId: userId,
+                    roomId: roomId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success(response.message);
+                    } else {
+                        toastr.error(response.message);
+                        // Başarısız olursa checkbox'ı eski haline getir
+                        $(`#admin_${userId}`).prop('checked', !isChecked);
+                    }
+                },
+                error: function() {
+                    toastr.error('Bir hata oluştu!');
+                    // Hata durumunda checkbox'ı eski haline getir
+                    $(`#admin_${userId}`).prop('checked', !isChecked);
+                }
+            });
+        }
+
+        function deleteRoom(id) {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Bu oda ve tüm mesajları silinecek!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Evet, sil!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Admin/DeleteChatRoom', { id: id }, function(response) {
+                        if (response.success) {
+                            $('#roomsTable').DataTable().ajax.reload();
+                            toastr.success('Oda başarıyla silindi');
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    });
+                }
+            });
+        }
+
+        function editRoom(id) {
+            $.get(`/Admin/EditChatRoom/${id}`, function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        title: 'Oda Düzenle',
+                        html: `
+                            <input id="roomName" class="swal2-input" placeholder="Oda Adı" value="${response.data.name}">
+                            <textarea id="roomDescription" class="swal2-textarea" placeholder="Açıklama">${response.data.description}</textarea>
+                            <div class="custom-control custom-switch mt-3">
+                                <input type="checkbox" class="custom-control-input" id="roomIsActive" ${response.data.isActive ? 'checked' : ''}>
+                                <label class="custom-control-label" for="roomIsActive">Aktif</label>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Güncelle',
+                        cancelButtonText: 'İptal',
+                        preConfirm: () => {
+                            return {
+                                name: $('#roomName').val(),
+                                description: $('#roomDescription').val(),
+                                isActive: $('#roomIsActive').is(':checked')
+                            }
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $.post('/Admin/UpdateChatRoom', {
+                                id: id,
+                                name: result.value.name,
+                                description: result.value.description,
+                                isActive: result.value.isActive
+                            }, function(response) {
+                                if (response.success) {
+                                    $('#roomsTable').DataTable().ajax.reload();
+                                    toastr.success('Oda başarıyla güncellendi');
+                                } else {
+                                    toastr.error(response.message);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // ... diğer JavaScript fonksiyonları ...
+    </script>
+}
+
+
+

@@ -1,0 +1,105 @@
+@{
+    ViewData["Title"] = "Oda İstekleri";
+    Layout = "~/Views/Shared/_adminLayout.cshtml";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Bekleyen Oda İstekleri</h3>
+    </div>
+    <div class="card-body">
+        <table id="requestsTable" class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Kullanıcı</th>
+                    <th>Oda</th>
+                    <th>Mesaj</th>
+                    <th>Tarih</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var table = $('#requestsTable').DataTable({
+                "ajax": {
+                    "url": "/Admin/GetPendingRequests",
+                    "type": "GET",
+                    "datatype": "json"
+                },
+                "columns": [
+                    { 
+                        "data": "user",
+                        "render": function(data) {
+                            return `${data.name} ${data.surname} (${data.userName})`;
+                        }
+                    },
+                    { 
+                        "data": "chatRoom.name"
+                    },
+                    { "data": "message" },
+                    {
+                        "data": "requestDate",
+                        "render": function(data) {
+                            return moment(data).format('DD/MM/YYYY HH:mm');
+                        }
+                    },
+                    {
+                        "data": "id",
+                        "render": function (data) {
+                            return `
+                                <button class="btn btn-sm btn-success" onclick="handleRequest(${data}, true)">
+                                    <i class="fas fa-check"></i> Onayla
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="handleRequest(${data}, false)">
+                                    <i class="fas fa-times"></i> Reddet
+                                </button>`;
+                        }
+                    }
+                ],
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+                },
+                "order": [[3, "desc"]] // Tarihe göre sırala
+            });
+        });
+
+        function handleRequest(requestId, isApproved) {
+            const action = isApproved ? 'onaylamak' : 'reddetmek';
+            
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: `Bu isteği ${action} istediğinize emin misiniz?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: isApproved ? '#28a745' : '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: isApproved ? 'Onayla' : 'Reddet',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Admin/HandleRequest',
+                        type: 'POST',
+                        data: { 
+                            requestId: requestId,
+                            isApproved: isApproved
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $('#requestsTable').DataTable().ajax.reload();
+                                toastr.success(response.message);
+                            } else {
+                                toastr.error(response.message);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+} 

@@ -1,0 +1,251 @@
+﻿@if (User.Identity.IsAuthenticated)
+{
+    @if (User.IsInRole("Admin"))
+    {
+        <script>
+            window.location.href = "/Admin/Index";
+        </script>
+    }
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Chat App</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        main {
+            flex: 1 0 auto;
+        }
+
+        .navbar {
+            background-color: #2c3e50 !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .navbar-brand {
+            color: #ecf0f1 !important;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .nav-link {
+            color: #ecf0f1 !important;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #3498db !important;
+        }
+
+        .profile-dropdown {
+            padding: 0;
+        }
+
+        .profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ecf0f1;
+        }
+
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,.1);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .dropdown-item {
+            padding: 8px 20px;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+            color: #3498db;
+        }
+
+        .user-info {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        .user-info img {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+
+        .user-info h6 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .user-info p {
+            margin: 5px 0 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px 0;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        footer a {
+            color: #3498db;
+        }
+
+        footer a:hover {
+            color: #2980b9;
+            text-decoration: none;
+        }
+
+        /* İkon margin düzeltmeleri */
+        .fa, .fas, .far, .fab {
+            margin-right: 0.5rem;
+        }
+        
+        /* Navbar toggle button renk düzeltmesi */
+        .navbar-toggler {
+            background-color: #ecf0f1;
+        }
+        
+        /* Mobil menü düzeltmeleri */
+        @@media (max-width: 576px) {
+            .navbar-collapse {
+                background-color: #2c3e50;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin-top: 0.5rem;
+            }
+            
+            .profile-dropdown {
+                margin-top: 1rem;
+            }
+        }
+        
+        /* Dropdown menu pozisyon düzeltmesi */
+        .dropdown-menu-end {
+            right: 0;
+            left: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-comments"></i>Chat App
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-home"></i>Ana Sayfa
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown profile-dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" 
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <img src="@(User.FindFirst("ProfileImage")?.Value ?? "/images/default-avatar.png")" 
+                                         alt="Profile" class="profile-img" />
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                                    <div class="user-info">
+                                        <img src="@(User.FindFirst("ProfileImage")?.Value ?? "/images/default-avatar.png")" 
+                                             alt="Profile" />
+                                        <h6>@User.Identity.Name</h6>
+                                        <p>@User.FindFirst("Email")?.Value</p>
+                                    </div>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Home" asp-action="Profile">
+                                            <i class="fas fa-user"></i>Profilim
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="Logout">
+                                            <i class="fas fa-sign-out-alt"></i>Çıkış Yap
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    }
+                    else
+                    {
+                        <ul class="navbar-nav">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Login">
+                                    <i class="fas fa-sign-in-alt"></i>Giriş Yap
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Account" asp-action="Register">
+                                    <i class="fas fa-user-plus"></i>Kayıt Ol
+                                </a>
+                            </li>
+                        </ul>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container text-center">
+            &copy; @DateTime.Now.Year - Chat App - 
+            <a asp-controller="Home" asp-action="Privacy">Gizlilik</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    @await Component.InvokeAsync("Notyf")
+</body>
+</html>

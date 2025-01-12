@@ -1,0 +1,239 @@
+﻿@model List<ChatRoomViewModel>
+@{
+    ViewData["Title"] = "Ana Sayfa";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var roomStatuses = (Dictionary<int, (bool isApproved, bool hasPending)>)ViewBag.RoomStatuses;
+}
+
+<style>
+    .chat-rooms {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .room-card {
+        position: relative;
+        border-radius: 15px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        height: 320px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+        .room-card:hover {
+            transform: translateY(-5px);
+        }
+
+            .room-card:hover .room-overlay {
+                opacity: 1;
+            }
+
+    .room-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .room-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        padding: 20px;
+        color: white;
+    }
+
+    .room-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .room-description {
+        text-align: center;
+        margin-bottom: 20px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+    }
+
+    .room-status {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+
+    .status-active {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .status-inactive {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .join-button {
+        padding: 10px 30px;
+        border-radius: 25px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+    }
+
+        .join-button:hover {
+            background-color: #0056b3;
+            color: white;
+            text-decoration: none;
+        }
+
+    .created-info {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #ddd;
+    }
+
+    .btn-warning {
+        background-color: #ffc107;
+        color: #000;
+    }
+
+    .btn-warning:hover {
+        background-color: #e0a800;
+        color: #000;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+    }
+</style>
+
+<div class="chat-rooms">
+    @foreach (var room in Model)
+    {
+        <div class="room-card">
+            <img src="@(room.ImagePath ?? "/images/default-room.png")" class="room-image" alt="@room.Name">
+            <div class="room-status @(room.IsActive ? "status-active" : "status-inactive")">
+                @(room.IsActive ? "Aktif" : "Pasif")
+            </div>
+            <div class="room-overlay">
+                <h3 class="room-title">@room.Name</h3>
+                <p class="room-description">@(room.Description ?? "Açıklama yok")</p>
+                
+                @if (room.IsActive)
+                {
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        var (isApproved, hasPending) = roomStatuses[room.Id];
+                        
+                        if (isApproved)
+                        {
+                            <a href="@Url.Action("Room", "Chat", new { id = room.Id })" class="join-button">
+                                Sohbete Başla
+                            </a>
+                        }
+                        else if (hasPending)
+                        {
+                            <button disabled class="join-button btn-warning">İstek Beklemede</button>
+                        }
+                        else
+                        {
+                            <button onclick="joinRoom(@room.Id)" class="join-button">
+                                Katılma İsteği Gönder
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        <a href="@Url.Action("Login", "Account")" class="join-button">
+                            Giriş Yap
+                        </a>
+                    }
+                }
+                else
+                {
+                    <button disabled class="join-button btn-secondary">Oda Kapalı</button>
+                }
+                
+                <div class="created-info">
+                    <div>Oluşturan: @room.CreatedBy.UserName</div>
+                    <div>Tarih: @room.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function joinRoom(roomId) {
+            Swal.fire({
+                title: 'Katılım İsteği',
+                html: `
+                    <div class="form-group">
+                        <label>Mesajınız (Opsiyonel)</label>
+                        <textarea id="requestMessage" class="form-control" rows="3"></textarea>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Gönder',
+                cancelButtonText: 'İptal',
+                preConfirm: () => {
+                    return {
+                        message: document.getElementById('requestMessage').value
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/Home/JoinRequest',
+                        type: 'POST',
+                        data: {
+                            roomId: roomId,
+                            message: result.value.message
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire('Başarılı!', response.message, 'success')
+                                    .then(() => {
+                                        window.location.reload();
+                                    });
+                            } else {
+                                Swal.fire('Hata!', response.message, 'error');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}
+
+

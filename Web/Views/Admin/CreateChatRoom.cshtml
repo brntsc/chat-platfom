@@ -1,0 +1,42 @@
+@{
+    ViewData["Title"] = "Chat Odası Oluştur";
+    Layout = "~/Views/Shared/_adminLayout.cshtml";
+}
+
+@model ChatRoom
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Yeni Sohbet Odası Oluştur</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="CreateChatRoom" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label asp-for="Name">Oda Adı</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Description">Açıklama</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ImageFile">Oda Resmi</label>
+                <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" />
+            </div>
+
+            <div class="form-group">
+                <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="isActive" asp-for="IsActive">
+                    <label class="custom-control-label" for="isActive">Aktif</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Oluştur</button>
+            <a asp-action="Index" class="btn btn-secondary">İptal</a>
+        </form>
+    </div>
+</div> 

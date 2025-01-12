@@ -1,0 +1,141 @@
+@using Web.ViewModels
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Kayıt Ol";
+}
+
+<style>
+    .auth-container {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .auth-card {
+        width: 100%;
+        max-width: 400px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .auth-header {
+        background: #2c3e50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .auth-header i {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    .auth-body {
+        padding: 30px;
+        background: white;
+    }
+
+    .form-floating {
+        margin-bottom: 1rem;
+    }
+
+    .form-floating > label {
+        color: #6c757d;
+    }
+
+    .form-control:focus {
+        border-color: #2c3e50;
+        box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+    }
+
+    .auth-btn {
+        width: 100%;
+        padding: 12px;
+        background: #2c3e50;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .auth-btn:hover {
+        background: #34495e;
+        transform: translateY(-2px);
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 20px;
+        color: #6c757d;
+    }
+
+    .auth-footer a {
+        color: #2c3e50;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <i class="fas fa-user-plus"></i>
+            <h3>Kayıt Ol</h3>
+            <p class="mb-0">Yeni bir hesap oluşturun</p>
+        </div>
+        <div class="auth-body">
+            <form asp-action="Register" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger text-center mb-3"></div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Name" class="form-control" placeholder="Ad">
+                    <label asp-for="Name">Ad</label>
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Surname" class="form-control" placeholder="Soyad">
+                    <label asp-for="Surname">Soyad</label>
+                    <span asp-validation-for="Surname" class="text-danger"></span>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Email" class="form-control" placeholder="name@example.com">
+                    <label asp-for="Email">Email</label>
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Password" class="form-control" placeholder="Şifre">
+                    <label asp-for="Password">Şifre</label>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="ConfirmPassword" class="form-control" placeholder="Şifre Tekrar">
+                    <label asp-for="ConfirmPassword">Şifre Tekrar</label>
+                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    <i class="fas fa-user-plus me-2"></i>Kayıt Ol
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Zaten hesabınız var mı? <a asp-action="Login">Giriş Yap</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 
